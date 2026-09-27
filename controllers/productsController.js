@@ -97,9 +97,10 @@ export let allProducts = async (req, res) => {
 export let showProduct = async (req, res) => {
     try {
         //we will show 1 matched id  product available in db here
-        let id = req.body;
+        let {id} = req.params;
        
         let product = await getProduct(id);
+        console.log(product);
         res.status(200).json({
             'message': "1 product matched",
             'product':product

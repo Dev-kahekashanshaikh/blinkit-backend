@@ -12,7 +12,7 @@ productRoute.get( '/getAllProducts/category/:category',allProductsByCategory);
 
 productRoute.post('/addproduct', insertProduct);
 
-productRoute.get('/getProductById', showProduct);
+productRoute.get('/getProductById/:id', showProduct);
 
 productRoute.post('/updateproduct',updateProduct);
 
