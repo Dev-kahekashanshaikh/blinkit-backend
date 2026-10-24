@@ -1,0 +1,50 @@
+import Product from "../model/productSchema.js"
+
+
+export const getChatResponse = async (message) => {
+  try {
+    
+    const text = message.toLowerCase();
+
+    // Example:
+    // "show me products under 500"
+    if (text.includes("under")) {
+      const priceMatch = text.match(/\d+/);
+
+      if (!priceMatch) {
+        return {
+          reply: "Please enter a price. Example: show products under 500",
+          products: [],
+        };
+      }
+
+      const price = Number(priceMatch[0]);
+
+      const products = await Product.find({
+        price: { $lte: price },
+      });
+
+      if (products.length === 0) {
+        return {
+          reply: `No products found under ₹${price}.`,
+          products: [],
+        };
+      }
+
+      return {
+        reply: `I found ${products.length} products under ₹${price}.`,
+        products: products,
+      };
+    }
+
+    // Default response
+    return {
+      reply:
+        "I can help you search products. Try: show me products under 500",
+      products: [],
+    };
+
+  } catch (error) {
+    throw error;
+  }
+};
