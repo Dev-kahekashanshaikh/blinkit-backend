@@ -1,6 +1,9 @@
 import express from 'express'
 import { signup, verifyEmail,
-  login,forgotPassword ,resetPassword} from "../controllers/authController.js";
+  login,logout,forgotPassword ,resetPassword} from "../controllers/authController.js";
+import { requireAuth } from "../middleware/authMiddleware.js";
+
+
 export const authenticationRoute = express.Router();
 
 
@@ -20,3 +23,19 @@ authenticationRoute.post('/forgot-password',forgotPassword);
 
 // //Set a new password
 authenticationRoute.post('/reset-password',resetPassword);
+
+
+authenticationRoute.post("/logout", logout);
+
+authenticationRoute.get("/me", requireAuth, (req, res) => {
+  return res.status(200).json({
+    message: "Authenticated user",
+    user:  {
+      id: req.user.id,
+      role: req.user.role,
+      name: req.user.name,
+      email: req.user.email,
+      address: req.user.address,
+    },
+  });
+});

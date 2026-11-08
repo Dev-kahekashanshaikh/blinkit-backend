@@ -9,6 +9,75 @@ import {
 import { sendVerificationEmail ,sendPasswordResetEmail } from "../services/emailService.js";
 
 // Signup and send OTP
+// export const signup = async (req, res) => {
+//   try {
+//     const { name, email, password } = req.body;
+
+//     if (
+//       typeof name !== "string" ||
+//       typeof email !== "string" ||
+//       typeof password !== "string" ||
+//       !name.trim() ||
+//       !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) ||
+//       password.length < 8 ||
+//       password.length > 72
+//     ) {
+//       return res.status(400).json({
+//         success: false,
+//         message:
+//           "Provide a valid name and email, and a password of 8–72 characters."
+//       });
+//     }
+
+//     const { user, otp } = await signupUser({
+//       name,
+//       email,
+//       password
+//     });
+
+//     try {
+//       await sendVerificationEmail(user.email, otp);
+//     } catch (emailError) {
+//       // Remove the newly created account if email delivery fails.
+//       await user.deleteOne();
+
+//       console.error(
+//         "OTP email error:",
+//         emailError.response?.data || emailError.message
+//       );
+
+//       return res.status(502).json({
+//         success: false,
+//         message: "Unable to send verification OTP. Please try again."
+//       });
+//     }
+
+//     return res.status(201).json({
+//       success: true,
+//       message:
+//         "Account created. Check your email for the verification OTP."
+//     });
+//   } catch (error) {
+//     if (error.statusCode === 409 || error.code === 11000) {
+//       return res.status(409).json({
+//         success: false,
+//         message: "Email is already registered."
+//       });
+   
+
+//     }
+
+//     console.error("Signup error:", error.message);
+
+//     return res.status(500).json({
+//       success: false,
+//       message: "Unable to create account."
+//     });
+//   }
+// };
+
+// Signup, send OTP, and automatically log in the user
+// Signup and send OTP
 export const signup = async (req, res) => {
   try {
     const { name, email, password } = req.body;
@@ -30,15 +99,14 @@ export const signup = async (req, res) => {
     }
 
     const { user, otp } = await signupUser({
-      name,
-      email,
+      name: name.trim(),
+      email: email.trim().toLowerCase(),
       password
     });
 
     try {
       await sendVerificationEmail(user.email, otp);
     } catch (emailError) {
-      // Remove the newly created account if email delivery fails.
       await user.deleteOne();
 
       console.error(
@@ -54,17 +122,15 @@ export const signup = async (req, res) => {
 
     return res.status(201).json({
       success: true,
-      message:
-        "Account created. Check your email for the verification OTP."
+      message: "Account created. Check your email for the verification OTP."
     });
+
   } catch (error) {
     if (error.statusCode === 409 || error.code === 11000) {
       return res.status(409).json({
         success: false,
         message: "Email is already registered."
       });
-   
-
     }
 
     console.error("Signup error:", error.message);
@@ -76,7 +142,50 @@ export const signup = async (req, res) => {
   }
 };
 
+
+
+
 // Verify email using the submitted OTP
+// export const verifyEmail = async (req, res) => {
+//   try {
+//     const { email, otp } = req.body;
+
+//     if (
+//       typeof email !== "string" ||
+//       !email.trim() ||
+//       typeof otp !== "string" ||
+//       !/^\d{6}$/.test(otp)
+//     ) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "A valid email and six-digit OTP are required."
+//       });
+//     }
+
+//     const user = await verifyEmailOtp(email, otp);
+
+//     if (!user) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Invalid or expired OTP."
+//       });
+//     }
+
+//     return res.status(200).json({
+//       success: true,
+//       message: "Email verified successfully. You can now log in."
+//     });
+//   } catch (error) {
+//     console.error("OTP verification error:", error.message);
+
+//     return res.status(500).json({
+//       success: false,
+//       message: "Unable to verify email."
+//     });
+//   }
+// };
+
+// Verify email and automatically log in
 export const verifyEmail = async (req, res) => {
   try {
     const { email, otp } = req.body;
@@ -93,7 +202,20 @@ export const verifyEmail = async (req, res) => {
       });
     }
 
-    const user = await verifyEmailOtp(email, otp);
+    if (!process.env.JWT_SECRET) {
+      console.error("JWT_SECRET is not configured.");
+
+      return res.status(500).json({
+        success: false,
+        message: "Server authentication is not configured."
+      });
+    }
+
+    // Verify OTP and update email verification status
+    const user = await verifyEmailOtp(
+      email.trim().toLowerCase(),
+      otp
+    );
 
     if (!user) {
       return res.status(400).json({
@@ -102,10 +224,37 @@ export const verifyEmail = async (req, res) => {
       });
     }
 
+    // Generate JWT after successful verification
+    const token = jwt.sign(
+      { role: user.role },
+      process.env.JWT_SECRET,
+      {
+        subject: user._id.toString(),
+        expiresIn: process.env.JWT_EXPIRES_IN || "1h"
+      }
+    );
+
+    // Set HttpOnly authentication cookie
+    res.cookie("accessToken", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 60 * 60 * 1000,
+      path: "/"
+    });
+
     return res.status(200).json({
       success: true,
-      message: "Email verified successfully. You can now log in."
+      message: "Email verified successfully. You are now logged in!",
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        isEmailVerified: user.isEmailVerified,
+        role: user.role
+      }
     });
+
   } catch (error) {
     console.error("OTP verification error:", error.message);
 
@@ -170,18 +319,25 @@ export const login = async (req, res) => {
       }
     );
 
-    return res.status(200).json({
-      success: true,
-      message: "Login successful.",
-      token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        isEmailVerified: user.isEmailVerified,
-        role: user.role
-      }
-    });
+ res.cookie("accessToken", token, {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: "lax",
+  maxAge: 60 * 60 * 1000,
+  path: "/"
+});
+
+return res.status(200).json({
+  success: true,
+  message: "Login successful.",
+  user: {
+    id: user._id,
+    name: user.name,
+    email: user.email,
+    isEmailVerified: user.isEmailVerified,
+    role: user.role
+  }
+});
   } catch (error) {
     console.error("Login error:", error.message);
 
@@ -282,4 +438,19 @@ export const resetPassword = async (req, res) => {
       message: "Unable to reset password right now. Please try again later.",
     });
   }
+};
+
+
+export const logout = (req, res) => {
+  res.clearCookie("accessToken", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/"
+  });
+
+  return res.status(200).json({
+    success: true,
+    message: "Logged out successfully."
+  });
 };

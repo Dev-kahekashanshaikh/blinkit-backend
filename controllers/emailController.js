@@ -2,9 +2,79 @@ import "dotenv/config";
 import nodemailer from "nodemailer";
 
 
+
 export let sendEmail = async (req, res) => {
+
+
   try {
-    const { to, subject, text, html } = req.body; 
+      const {
+  user,
+  orderItems,
+  itemsTotal,
+  finalDeliveryCharge,
+  handlingCharge,
+  donationAmount,
+  grandTotal,
+} = req.body;
+
+
+ 
+const to = process.env.ADMIN_EMAIL; // Replace with the recipient's email address
+
+const subject = "New E-commerce Order";
+
+const text = `
+New Order Received
+
+Customer: ${user.name}
+Email: ${user.email}
+
+Order Items:
+${orderItems.map(item =>
+  `${item.productName} x ${item.quantity} - ₹${item.totalPrice}`
+).join("\n")}
+
+Items Total: ₹${itemsTotal}
+Delivery Charge: ₹${finalDeliveryCharge}
+Handling Charge: ₹${handlingCharge}
+Donation: ₹${donationAmount}
+
+Grand Total: ₹${grandTotal}
+`;
+
+const html = `
+<h2>New Order Received</h2>
+
+<h3>Customer Details</h3>
+<p>Name: ${user.name}</p>
+<p>Email: ${user.email}</p>
+
+<h3>Order Items</h3>
+<table border="1" cellpadding="8" cellspacing="0">
+  <tr>
+    <th>Product</th>
+    <th>Quantity</th>
+    <th>Total</th>
+  </tr>
+
+  ${orderItems.map(item => `
+    <tr>
+      <td>${item.productName}</td>
+      <td>${item.quantity}</td>
+      <td>₹${item.totalPrice}</td>
+    </tr>
+  `).join("")}
+</table>
+
+<h3>Bill Details</h3>
+<p>Items Total: ₹${itemsTotal}</p>
+<p>Delivery Charge: ₹${finalDeliveryCharge}</p>
+<p>Handling Charge: ₹${handlingCharge}</p>
+<p>Donation: ₹${donationAmount}</p>
+
+<h2>Grand Total: ₹${grandTotal}</h2>
+`;
+
 
 
 

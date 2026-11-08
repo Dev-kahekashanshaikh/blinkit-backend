@@ -1,4 +1,5 @@
 import express from 'express';
+import cookieParser from "cookie-parser";
 import axios from 'axios';
 import crypto from 'crypto';
 
@@ -16,7 +17,12 @@ import dotenv from 'dotenv';
 dotenv.config();
 import  connectDB  from "./db/connectdb.js";
 const app = express();
-app.use(cors());
+app.use(
+  cors({
+    origin: process.env.FRONTEND_URL,
+    credentials: true,
+  })
+);
 app.use(express.json());
 app.use(express.urlencoded({extended:true}));
 
@@ -25,8 +31,10 @@ app.use('/user1',user1Route);
 app.use('/product',productRoute);
 app.use('/cart',cartRoute);
 app.use("/api", chatRoute);
-app.use("/mail", emailRoutes);
+app.use("/orders", emailRoutes);
 app.use('/blinkit/user',blikitAppUserRoute);
+
+app.use(cookieParser());
 app.use('/api/auth',authenticationRoute)
 
 connectDB(process.env.MONGODB_URL,process.env.DB_NAME);
