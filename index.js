@@ -17,9 +17,14 @@ import dotenv from 'dotenv';
 dotenv.config();
 import  connectDB  from "./db/connectdb.js";
 const app = express();
+
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://blinkit-frontend-z9de.vercel.app/"
+];
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL,
+    origin: allowedOrigins,
     credentials: true,
   })
 );
