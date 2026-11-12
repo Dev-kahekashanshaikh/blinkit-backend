@@ -18,16 +18,29 @@ dotenv.config();
 import  connectDB  from "./db/connectdb.js";
 const app = express();
 
+
 const allowedOrigins = [
   "http://localhost:5173",
-  "https://blinkit-frontend-z9de.vercel.app/"
+  "https://blinkit-frontend-z9de.vercel.app",
+  "https://blinkit-frontend-3j23tj78k-dev-kahekashanshaikhs-projects.vercel.app"
 ];
+
 app.use(
   cors({
-    origin: allowedOrigins,
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error(`CORS blocked for origin: ${origin}`));
+      }
+    },
     credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"]
   })
 );
+
+
 app.use(express.json());
 app.use(express.urlencoded({extended:true}));
 
